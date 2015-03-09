@@ -3,7 +3,6 @@ title: "Reproducible Research: Peer Assessment 1"
 author: "Jorge Cabrita de Sousa"
 date: "8 Mar 2015"
 output: html_document
-keep_md: true
 ---
 
 ## First whe need to read the csv containing the data
