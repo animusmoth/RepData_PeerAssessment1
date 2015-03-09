@@ -1,25 +1,120 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+author: "Jorge Cabrita de Sousa"
+date: "8 Mar 2015"
+output: html_document
+keep_md: true
 ---
 
+## First whe need to read the csv containing the data
+We will be using dplyr and ggplot2 during this essay.
+```{r warning=FALSE}
+# load 'dplyr' whith suppressed startup messages
+suppressPackageStartupMessages(library(dplyr))
+# the same for 'ggplot2'
+suppressPackageStartupMessages(library(ggplot2))
+data  <- tbl_df(read.csv("activity.csv"))
+```
+First we need to clean the original dataset for missing values.
+```{r}
+clean_data <- filter(data,!is.na(steps))   # remove missing values
+```
 
-## Loading and preprocessing the data
+### Q: What is the mean total number of steps taken per day?  
+To answer the question, we group by *date* and summarize for *Total Number of Steps*.
+```{r}
+step_analysis <- group_by(clean_data,date) %>%    # group by date
+  summarize(total_steps = sum(steps)) # summarize the data
+```
+And plot the Histogram for *Total Number of Steps*:
+```{r echo=FALSE}
+p <- ggplot(step_analysis, aes(x=total_steps)) + 
+  geom_histogram(binwidth=2000, fill="white", colour="black") + 
+    ggtitle("Histogram\nTotal Steps/Day") + 
+    labs(x="Total Steps") + 
+    labs(y="Count")
+print(p)
+```
+
+From this we can also calculate the *Mean* and *Median* of the Total Number of Steps.
+```{r}
+mean_total_steps = round(mean(step_analysis$total_steps), digits=2)  ## calculate mean of total steps (rounded)
+median_total_steps = median(step_analysis$total_steps)  ## calculate median of total steps
+```
+And so, we can conclude that the *mean* of the total number of steps is **`r as.character(mean_total_steps)`** and the *median* of the total number of steps is **`r as.character(median_total_steps)`**;
+
+###Q: What is the average daily activity pattern?
+To answer this question we group by *interval* and summarize for *Average Number of Steps*.
+```{r}
+step_analysis2  <- group_by(clean_data,interval) %>%  ## group by interval
+  summarize(avg_steps = mean(steps))  ## summarize the data
+```
+And we plot the data as a line (as requested).
+```{r echo=FALSE}
+p2 <- qplot(interval, avg_steps, data=step_analysis2, geom="line") + 
+      ggtitle("Average Daily Activity") + 
+      labs(x="Intervals") + 
+      labs(y="Average steps taken")
+print(p2) ## print the plot
+```
+
+We also collect the maximum average *interval*.
+```{r}
+max_avg_interval = filter(step_analysis2, avg_steps==max(avg_steps)) ## show max avg interval
+```
+And conclude that the *interval* with the maximum average steps is **`r max_avg_interval$interval`**. 
+ 
+###Q: Inputing missing values
+To answer this question, we first compute the total number of rows with NA values.
+```{r}
+step_analysis3  <- filter(data, is.na(steps))   ## show total NA values
+```
+And we calculate that value to be: **`r nrow(step_analysis3)`**.
+For the second part of this question we prepare a second dataset filling the missing data by replacing the *NA* values with the average values for each interval.
+```{r}
+data2  <- inner_join(data, step_analysis2, by="interval") %>% ## join by interval 
+  mutate(new_steps=ifelse(is.na(steps), avg_steps, steps)) %>%  ## calculate avg steps
+  select(date,interval,new_steps) ## clean the dataset
+```
+We then group by *date* and summarize for Total Number of Steps with the new values.
+```{r}
+step_analysis4 <- group_by(data2,date) %>%  ## group by date
+  summarize(total_steps=sum(new_steps)) ## summarize
+```
+And we plot the Histogram of the Total Number of Steps
+```{r echo=FALSE}
+p3 <- ggplot(step_analysis4, 
+              aes(x=total_steps)) + 
+    geom_histogram(binwidth=2000, fill="white", colour="black") + 
+    ggtitle("Histogram\nTotal Steps/Day") + 
+    labs(x="Total Steps") + 
+    labs(y="Count")
+
+print(p3) ## print the plot
+```
+
+From this we can also calculate the *Mean* and *Median* of the Total Number of Steps.
+```{r}
+mean_total_steps2 = round(mean(step_analysis4$total_steps), digits=2)    ## calculate mean (rounded)
+median_total_steps2 = round(median(step_analysis4$total_steps), digits=2)  ## calculate median
+```
+And so, we can conclude that the *mean* of the total number of steps is **`r as.character(mean_total_steps2)`** and the *median* of the total number of steps is **`r as.character(median_total_steps2)`**;
+
+###Q: Are there differences in activity patterns between weekdays and weekends?
+To answer this question we start from the *clean_data* dataset and mutate it, adding a column that identifies which are the Weekdays and which are the Weekends.
+```{r}
+step_analysis5 <- mutate(clean_data,WeekDays=weekdays(as.Date(date)), fDay=ifelse(WeekDays==c("Sunday","Saturday"), "Weekend", "Weekday")) %>% ## add weekdays column
+  group_by(interval,fDay)  %>% ## group by factors
+  summarize(total_steps=sum(steps)) ## summarize
+```
+And we plot them sepparately, correcting the scale of both graphics in order to better understand each distribution.
+```{r echo=FALSE}
+p4 <- qplot(interval, total_steps, data=step_analysis5, facets= fDay ~ ., geom="line") + 
+        facet_grid(fDay ~ ., scales="free_y") +
+        labs(x = "Interval") +
+        labs(y = "Number of steps") +
+        ggtitle("Step Patterns\nBetween Weekdays and Weekends")
 
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+ print(p4)  ## print the plot
+```
